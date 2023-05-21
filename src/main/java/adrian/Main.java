@@ -9,9 +9,9 @@ import discord4j.core.object.entity.User;
 import reactor.core.publisher.Mono;
 
 public class Main {
-
+    //HOLAAAAA
     public static void main(String[] args) {
-        DiscordClient client = DiscordClient.create("MTEwNTg4NjI0MjYyMjY4MTE5OA.GO2bxU.mIhVCBNUKnm0eE6uIAF5JzsYUwRaHYqlb3SLkE");
+        DiscordClient client = DiscordClient.create("MTEwNTg4NjI0MjYyMjY4MTE5OA.GjdyJs.D7hlF5APdEWTxI9Nt2fMjwhBE5KF9niW4Be6xk");
 
         //Mono<Void> login = client.withGateway((GatewayDiscordClient gateway) -> Mono.empty());
 
@@ -20,7 +20,7 @@ public class Main {
                 Mono<Void> printOnLogin = gateway.on(ReadyEvent.class, event ->
                     Mono.fromRunnable(() -> {
                       final User self = event.getSelf();
-                      System.out.printf("Iniciado como %s#%s%n", self.getUsername(), self.getDiscriminator());
+                      System.out.printf("Iniciado como %s#%s%n...\n", self.getUsername(), self.getDiscriminator());
                 })).then();
               
                 Mono<Void> handlePingCommand = gateway.on(MessageCreateEvent.class, event -> {
@@ -57,7 +57,7 @@ public class Main {
                 Mono<Void> printOnLogin = gateway.on(ReadyEvent.class, event ->
                     Mono.fromRunnable(() -> {
                       final User self = event.getSelf();
-                      System.out.printf("Iniciando comandos");
+                      System.out.println("Iniciando comandos...");
                 })).then();
               
                 Mono<Void> handlePingCommand = gateway.on(MessageCreateEvent.class, event -> {
