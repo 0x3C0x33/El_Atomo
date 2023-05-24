@@ -12,10 +12,12 @@ import discord4j.rest.util.Color;
 import java.io.File;
 import java.io.IOException;
 
+//Clase encargada de proporcionar las mismas variables a todas las clases.
 public class DeuxExMachina {
     public static List<List<String>> elementos = new ArrayList<>();
     public static List<String> urls = new ArrayList<String>();
-    public static HashMap<String, Color> colores = new HashMap<>();
+    public static List<Color> colores = new ArrayList<Color>();
+    public static HashMap<String, Color> coloresMap = new HashMap<>();
 
     // Metodo para leer los elementos de un JSON
     static {
@@ -59,16 +61,29 @@ public class DeuxExMachina {
 
     // Metodo para crear todos los colores para los tipo de elemenos
     static {
-        colores.put("Metal alcalino", Color.of(255,197,145));
-        colores.put("Alcalinoterreo", Color.of(255,223,145));
-        colores.put("Otro metal", Color.of(255,249,145));
-        colores.put("Metal de transicion", Color.of(237,255,146));
-        colores.put("Lantanido", Color.of(210,255,145));
-        colores.put("Actinido", Color.of(184, 255, 145));
-        colores.put("Metaloide", Color.of(146, 255, 158));
-        colores.put("No metal", Color.of(171, 145, 255));
-        colores.put("Halogeno", Color.of(249, 145, 255));
-        colores.put("Gas noble", Color.of(146, 223, 255));
+        coloresMap.put("Metal alcalino", Color.of(255,197,145));
+        coloresMap.put("Alcalinotérreo", Color.of(255,223,145));
+        coloresMap.put("Metal de post-transición", Color.of(255,249,145));
+        coloresMap.put("Metal de transición", Color.of(237,255,146));
+        coloresMap.put("Lantánido", Color.of(210,255,145));
+        coloresMap.put("Actínido", Color.of(184, 255, 145));
+        coloresMap.put("Metaloide", Color.of(146, 255, 158));
+        coloresMap.put("No metal", Color.of(171, 145, 255));
+        coloresMap.put("Halógeno", Color.of(249, 145, 255));
+        coloresMap.put("Gas noble", Color.of(146, 223, 255));
+    }
+
+    static {
+        colores.add(Color.of(255,197,145));
+        colores.add(Color.of(255,223,145));
+        colores.add(Color.of(255,249,145));
+        colores.add(Color.of(237,255,146));
+        colores.add(Color.of(210,255,145));
+        colores.add(Color.of(184, 255, 145));
+        colores.add(Color.of(146, 255, 158));
+        colores.add(Color.of(171, 145, 255));
+        colores.add(Color.of(249, 145, 255));
+        colores.add(Color.of(146, 223, 255));
     }
 
 }
