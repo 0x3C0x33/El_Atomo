@@ -13,12 +13,8 @@ import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 
 public class Main {
-    // HOLAAAAA
     public static void main(String[] args) {
-        DiscordClient client = DiscordClient.create("");
-
-        // Mono<Void> login = client.withGateway((GatewayDiscordClient gateway) ->
-        // Mono.empty());
+        DiscordClient client = DiscordClient.create("TOKEN");
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .color(Color.BLUE)
@@ -36,8 +32,6 @@ public class Main {
                 .timestamp(Instant.now())
                 .footer("footer", "https://i.imgur.com/F9BhEoz.png")
                 .build();
-
-        
 
         new Thread(() -> {
             Mono<Void> login = client.withGateway((GatewayDiscordClient gateway) -> {
@@ -110,7 +104,6 @@ public class Main {
 
             comandos.block();
         }).start();
-
     }
 
 }
