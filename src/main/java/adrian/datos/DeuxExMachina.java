@@ -14,10 +14,12 @@ import java.io.IOException;
 
 //Clase encargada de proporcionar las mismas variables a todas las clases.
 public class DeuxExMachina {
-    public static List<List<String>> elementos = new ArrayList<>();
-    public static List<String> urls = new ArrayList<String>();
-    public static List<Color> colores = new ArrayList<Color>();
-    public static HashMap<String, Color> coloresMap = new HashMap<>();
+    public static List<List<String>> elementos = new ArrayList<>(); // Todos los elementos guardados en listas
+    public static List<String> urls = new ArrayList<String>(); // Todas las url de las imagenes
+    public static List<Color> colores = new ArrayList<Color>(); // Colores ordenados por numero (aleatorio)
+    public static HashMap<String, Color> coloresMap = new HashMap<>(); // Colores ordenados por configuracion electronica
+    public static int dificultad = 1; //1=facil,2=normal,3=dificil
+    public static int mensajesParaRadiar = 10; // Numero maximo de random para soltar un mensaje
 
     // Metodo para leer los elementos de un JSON
     static {
