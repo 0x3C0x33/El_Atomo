@@ -20,7 +20,8 @@ public class DeuxExMachina {
     public static HashMap<String, Color> coloresMap = new HashMap<>(); // Colores ordenados por configuracion electronica
     public static int dificultad = 1; //1=facil,2=normal,3=dificil
     public static int mensajesParaRadiar = 10; // Numero maximo de random para soltar un mensaje
-
+    public static int probabilidadParaRadiar = 100; // De 0 a 100% para que despues de 'mensajesParaRadiar' aparezca un atomo
+    public static long tiempoCancelacion = 60000; // Tiempo que se tarda en cancelar el atomo en ejecucion.
     // Metodo para leer los elementos de un JSON
     static {
         try {
@@ -64,7 +65,7 @@ public class DeuxExMachina {
     // Metodo para crear todos los colores para los tipo de elemenos
     static {
         coloresMap.put("Metal alcalino", Color.of(255,197,145));
-        coloresMap.put("Alcalinotérreo", Color.of(255,223,145));
+        coloresMap.put("Metal alcalinotérreo", Color.of(255,223,145));
         coloresMap.put("Metal de post-transición", Color.of(255,249,145));
         coloresMap.put("Metal de transición", Color.of(237,255,146));
         coloresMap.put("Lantánido", Color.of(210,255,145));

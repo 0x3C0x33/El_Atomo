@@ -11,12 +11,15 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.Channel;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import reactor.core.publisher.Mono;
 
@@ -26,12 +29,18 @@ public class Polonio extends Thread {
 
     // Parametros internos
     private DiscordClient client; // Sesion del bot
+    private GatewayDiscordClient gateway;
     private Random ran = new Random(); // Para generar numeros aleatorios
     private int numAtomo; // Numero del atomo escogido aleatoriamente en ejecucion
     private List<String> atomo; // Atomo escogido aleatoriamente en ejecucion
     private String atomoCorrecto; // Nombre del atomo escodigo aleatoriamente que sera el correcto
     private CountDownLatch latch; // Avisa al hilo principal que su inicio ha terminado
-    private boolean jugando; // Boleano para saber si hay un atomo en ejecucion
+    private boolean jugando = false; // Boleano para saber si hay un atomo en ejecucion
+    private TimerTask task; // Task para empezar el contador de 60 segundos antes de que el bot no deje
+                            // tomar el atomo
+    private Timer timer; // El contador que cuenta los 60 segundos
+    private int contadorMensajes = 0;
+    private Message canalJugando;
 
     public Polonio(CountDownLatch latch, DiscordClient client) {
         this.latch = latch;
@@ -40,11 +49,12 @@ public class Polonio extends Thread {
 
     @Override
     public void run() {
+        gateway = client.login().block();
+
         Mono<Void> polonio = client.withGateway((GatewayDiscordClient gateway) -> {
 
             // Se invoca al iniciar Polonio
             Mono<Void> printOnLogin = gateway.on(ReadyEvent.class, event -> Mono.fromRunnable(() -> {
-                // final User self = event.getSelf();
                 System.out.printf("Polonio iniciado...\n"); // self.getUsername(), self.getDiscriminator()
                 latch.countDown(); // Manda la señal de que el hilo fue iniciado.
             })).then();
@@ -52,42 +62,51 @@ public class Polonio extends Thread {
             // Se fuerza la creacion de un atomo.
             Mono<Void> creadorAtomo = gateway.on(MessageCreateEvent.class, event -> {
                 Message message = event.getMessage();
-                // Optional<User> usuario = message.getAuthor();
+                if (message.getContent().equalsIgnoreCase("!atomo") && !jugando) {
+                    canalJugando = message;
+                    timer();
+                    return message.getChannel()
+                            .flatMap(channel -> channel.createMessage(creadorAtomo()));
+                } else if (message.getContent().equalsIgnoreCase("!atomo") && jugando) {
+                    return message.getChannel().flatMap(channel -> channel.createMessage("¡Ya se esta jugando!"));
+                }
+                return Mono.empty();
+            }).then();
 
-                if (message.getContent().equalsIgnoreCase("!atomo")) {
+            // Se invoca para cancelar el atomo en ejecucion TODO:Terminar
+            Mono<Void> aleatorizadorAtomo = gateway.on(MessageCreateEvent.class, event -> {
+                Message message = event.getMessage();
+                contadorMensajes++;
+                if (contadorMensajes > DeuxExMachina.mensajesParaRadiar
+                        && DeuxExMachina.probabilidadParaRadiar - 100 >= ran.nextInt(100) - 100 && !jugando) {
+                    timer();
+                    contadorMensajes = 0;
+                    canalJugando = message;
                     return message.getChannel()
                             .flatMap(channel -> channel.createMessage(creadorAtomo()));
                 }
-
                 return Mono.empty();
             }).then();
 
-            // Se invoca despues de cierto numero de mensajes TODO:Terminar
-            Mono<Void> aleatorizadorAtomo = gateway.on(MessageCreateEvent.class, event -> {
-
-                return Mono.empty();
-            }).then();
-
-            // Se invoca despues de cierto numero de mensajes
+            // Se invoca despues de acertar el atomo
             Mono<Void> respuesta = gateway.on(MessageCreateEvent.class, event -> {
-                Timer timer = new Timer();
-
-                timer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        // Coloca aquí el código que se ejecutará después de 60 segundos
-                        System.out.println("El temporizador ha terminado.");
-                        // Aquí puedes llamar al método que deseas que finalice después de 60 segundos
-                        metodoQueFinaliza();
-                    }
-                }, 6000); // Especifica el tiempo en milisegundos (60 segundos = 60000 ms)
-
+                Message message = event.getMessage();
+                if (message.getContent().equalsIgnoreCase("!" + atomoCorrecto.toLowerCase()) && jugando) {
+                    cancelarTemporizador();
+                    return message.getChannel()
+                            .flatMap(channel -> channel.createMessage("¡Átomo correcto!"));
+                }
                 return Mono.empty();
             }).then();
 
             // Se invoca para cancelar el atomo en ejecucion TODO:Terminar
             Mono<Void> cancelar = gateway.on(MessageCreateEvent.class, event -> {
-                
+                Message message = event.getMessage();
+                if (message.getContent().equalsIgnoreCase("!cancelar") && jugando) {
+                    cancelarTemporizador();
+                    return message.getChannel()
+                            .flatMap(channel -> channel.createMessage("Átomo cancelado."));
+                }
                 return Mono.empty();
             }).then();
 
@@ -96,9 +115,25 @@ public class Polonio extends Thread {
         polonio.block();
     }
 
-    private void metodoQueFinaliza() {
-        // Coloca aquí el código que deseas que se ejecute después de 60 segundos
-        System.out.println("El método ha finalizado.");
+    private void timer() { // channel.createMessage("¡Tiempo agotado para responder, la respuesta correctaera " + atomoCorrecto)
+        timer = new Timer();
+        jugando = true;
+        task = new TimerTask() {
+            @Override
+            public void run() {
+                Snowflake channelId = canalJugando.getChannelId(); //Obtener el ID del canal
+                client.login()
+                    .flatMap(gateway -> gateway.getChannelById(channelId)) //Obtener el canal por ID
+                    .ofType(MessageChannel.class) //Filtrar solo instancias de MessageChannel
+                    .flatMap(channel -> channel.createMessage("¡Tiempo agotado para responder, la respuesta correctaera " + atomoCorrecto)) //Crear y enviar el mensaje
+                    //.doOnSuccess(message -> System.out.println("Mensaje enviado: " + message.getContent())) //Realizar alguna acción cuando el mensaje se envíe con éxito
+                    .doOnError(Throwable::printStackTrace) //Manejar cualquier error que ocurra
+                    .doFinally(signalType -> gateway.logout()) //Cerrar la conexión cuando se haya completado la operación
+                    .subscribe(); //Suscribirse al flujo de eventos
+                jugando = false;
+            }
+        };
+        timer.schedule(task, DeuxExMachina.tiempoCancelacion); // Programa el temporizador
     }
 
     // Metodo encargado de crear el mensaje del atomo personalizado TODO:Terminar de
@@ -118,8 +153,6 @@ public class Polonio extends Thread {
         }
 
         switch (DeuxExMachina.dificultad) {
-            case 0:
-                /* Sin dificultad. */ break;
             case 3:
                 for (int i = 0; i < 5; i++) {
                     atomo.set(ran.nextInt(3, 15), generarCadenaAleatoria(10));
@@ -128,8 +161,7 @@ public class Polonio extends Thread {
                 atomo.set(1, generarCadenaAleatoria(10));
             case 1:
                 atomo.set(2, generarCadenaAleatoria(10));
-            default:
-                break;
+            default:/* Sin dificultad. */
         }
 
         // [[1, H, Hidrógeno, 1.0080, FFFFFF, 1s1, 2.2, 120, 13.598, 0.754, +1 -1, Gas,
@@ -177,57 +209,92 @@ public class Polonio extends Thread {
         return sb.toString();
     }
 
-    // "Número atómico",
-    // "Símbolo",
-    // "Nombre",
-    // "Masa atomica",
-    // "CPKHexColor",
-    // "Configuración electronica",
-    // "Electronegatividad",
-    // "Radio atómico",
-    // "Energía de ionización",
-    // "Afinidad electronica",
-    // "Estados de Oxidación",
-    // "Estado estándar",
-    // "Punto de fusion",
-    // "Punto de ebullición",
-    // "Densidad",
-    // "Bloque de grupo",
+    private void cancelarTemporizador() {
+        jugando = false;
+        if (timer != null && task != null) {
+            task.cancel(); // Cancela la tarea
+            timer.cancel(); // Cancela el temporizador
+        }
+    }
 }
 
-// Mono<Void> login = client.withGateway((GatewayDiscordClient gateway) -> {
+// Mono<Void> polonio = client.withGateway((GatewayDiscordClient gateway) -> {
+
+// // Se invoca al iniciar Polonio
 // Mono<Void> printOnLogin = gateway.on(ReadyEvent.class, event ->
 // Mono.fromRunnable(() -> {
-// final User self = event.getSelf();
-// System.out.printf("Iniciado como %s#%s%n...\n", self.getUsername(),
-// self.getDiscriminator());
+// System.out.printf("Polonio iniciado...\n"); // self.getUsername(),
+// self.getDiscriminator()
+// latch.countDown(); // Manda la señal de que el hilo fue iniciado.
 // })).then();
 
-// Mono<Void> handlePingCommand = gateway.on(MessageCreateEvent.class, event ->
+// // Se fuerza la creacion de un atomo.
+// Mono<Void> creadorAtomo = gateway.on(MessageCreateEvent.class, event -> {
+// Message message = event.getMessage();
+// if (message.getContent().equalsIgnoreCase("!atomo") && !jugando) {
+// canalJugando = message;
+// timer();
+// return message.getChannel()
+// .flatMap(channel -> channel.createMessage(creadorAtomo()));
+// } else if (message.getContent().equalsIgnoreCase("!atomo") && jugando) {
+// return message.getChannel().flatMap(channel -> channel.createMessage("¡Ya se
+// esta jugando!"));
+// }
+// return Mono.empty();
+// }).then();
+
+// // Se invoca para cancelar el atomo en ejecucion 
+// Mono<Void> aleatorizadorAtomo = gateway.on(MessageCreateEvent.class, event ->
 // {
 // Message message = event.getMessage();
-
-// if (message.getContent().equalsIgnoreCase("!ping")) {
+// contadorMensajes++;
+// if (contadorMensajes > DeuxExMachina.mensajesParaRadiar &&
+// DeuxExMachina.probabilidadParaRadiar - 100 >= ran.nextInt(100) - 100 &&
+// !jugando) {
+// timer();
+// contadorMensajes = 0;
+// canalJugando = message;
 // return message.getChannel()
-// .flatMap(channel -> channel.createMessage(creador()));
+// .flatMap(channel -> channel.createMessage(creadorAtomo()));
 // }
-
 // return Mono.empty();
 // }).then();
 
-// Mono<Void> holaMundo = gateway.on(MessageCreateEvent.class, event -> {
+// // Se invoca despues de acertar el atomo
+// Mono<Void> respuesta = gateway.on(MessageCreateEvent.class, event -> {
 // Message message = event.getMessage();
-
-// if (message.getContent().equalsIgnoreCase("!hola")) {
+// if (message.getContent().equalsIgnoreCase("!" + atomoCorrecto.toLowerCase())
+// && jugando) {
+// cancelarTemporizador();
 // return message.getChannel()
-// .flatMap(channel -> channel.createMessage("Hola mundo!"));
+// .flatMap(channel -> channel.createMessage("¡Átomo correcto!"));
 // }
-
 // return Mono.empty();
 // }).then();
 
-// // combine them!
-// return printOnLogin.and(handlePingCommand).and(holaMundo);
-// });
+// // Se invoca para cancelar el atomo en ejecucion 
+// Mono<Void> cancelar = gateway.on(MessageCreateEvent.class, event -> {
+// Message message = event.getMessage();
+// if (message.getContent().equalsIgnoreCase("!cancelar") && jugando) {
+// cancelarTemporizador();
+// return message.getChannel()
+// .flatMap(channel -> channel.createMessage("Átomo cancelado."));
+// }
+// return Mono.empty();
+// }).then();
 
-// login.block();
+// return
+// printOnLogin.and(creadorAtomo).and(aleatorizadorAtomo).and(respuesta).and(cancelar);
+// });
+// polonio.block();
+
+// gateway.on(MessageCreateEvent.class)
+//                 .subscribe(event -> {
+//                     // Obtener el canal en el que se recibió el mensaje
+//                     MessageChannel channel = event.getMessage().getChannel().block();
+
+//                     // Enviar un mensaje en el canal
+//                     channel.createMessage("¡Hola, mundo!").block();
+//                 });
+
+//         gateway.onDisconnect().block();
