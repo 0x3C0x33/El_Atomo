@@ -14,14 +14,17 @@ import java.io.IOException;
 
 //Clase encargada de proporcionar las mismas variables a todas las clases.
 public class DeuxExMachina {
+    // Propiedades internas autocompletadas
     public static List<List<String>> elementos = new ArrayList<>(); // Todos los elementos guardados en listas
     public static List<String> urls = new ArrayList<String>(); // Todas las url de las imagenes
     public static List<Color> colores = new ArrayList<Color>(); // Colores ordenados por numero (aleatorio)
     public static HashMap<String, Color> coloresMap = new HashMap<>(); // Colores ordenados por configuracion electronica
+    // Propiedades que puede cambiar el administrador. Todo lo puesto es el por defecto.
     public static int dificultad = 1; //1=facil,2=normal,3=dificil
     public static int mensajesParaRadiar = 10; // Numero maximo de random para soltar un mensaje
-    public static int probabilidadParaRadiar = 100; // De 0 a 100% para que despues de 'mensajesParaRadiar' aparezca un atomo
+    public static int probabilidadParaRadiar = 10; // De 0 a 100% para que despues de 'mensajesParaRadiar' aparezca un atomo
     public static long tiempoCancelacion = 60000; // Tiempo que se tarda en cancelar el atomo en ejecucion.
+    
     // Metodo para leer los elementos de un JSON
     static {
         try {
